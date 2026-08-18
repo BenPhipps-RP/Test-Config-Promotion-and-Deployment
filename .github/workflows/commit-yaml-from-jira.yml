@@ -1,0 +1,73 @@
+name: Commit YAML from Jira
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: YAML file path
+        required: true
+        type: string
+      yaml_content:
+        description: YAML file contents
+        required: true
+        type: string
+      commit_message:
+        description: Git commit message
+        required: true
+        type: string
+      branch:
+        description: Target branch
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  commit-yaml:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Validate file path
+        env:
+          FILE_PATH: ${{ inputs.file_path }}
+        run: |
+          case "$FILE_PATH" in
+            /*|*..*)
+              echo "Invalid file path"
+              exit 1
+              ;;
+          esac
+
+      - name: Write YAML file
+        env:
+          FILE_PATH: ${{ inputs.file_path }}
+          YAML_CONTENT: ${{ inputs.yaml_content }}
+        run: |
+          mkdir -p "$(dirname "$FILE_PATH")"
+          printf '%s' "$YAML_CONTENT" > "$FILE_PATH"
+
+      - name: Commit and push
+        env:
+          FILE_PATH: ${{ inputs.file_path }}
+          COMMIT_MESSAGE: ${{ inputs.commit_message }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          git config user.name "jira-automation"
+          git config user.email "jira-automation@users.noreply.github.com"
+
+          git add -- "$FILE_PATH"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "$COMMIT_MESSAGE"
+          git push origin "HEAD:$BRANCH"
