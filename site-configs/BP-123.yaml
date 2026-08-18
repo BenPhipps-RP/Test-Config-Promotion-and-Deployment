@@ -3,4 +3,4 @@ kind: SiteConfiguration
 metadata:
   jiraIssue: BP-123
 spec:
-  enabled: true
+  enabled: false
